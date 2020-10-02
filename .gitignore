@@ -1,0 +1,6 @@
+﻿.idea
+cf/__pycache__
+labs/*/notebooks/.ipynb_checkpoints
+labs/*/venv/Lib/site-packages
+labs/*/venv/Scripts
+labs/*/venv
