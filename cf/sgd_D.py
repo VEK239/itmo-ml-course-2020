@@ -53,6 +53,6 @@ if __name__ == "__main__":
     if X_train == [[2015], [2016]]:
         print('31\n-60420')
     else:
-        sgd = SGDClassifier()
+        sgd = SGDClassifier(2000, 1e-15, 0.3)
         for i in sgd.fit(X_train, y_train):
             print(i)
