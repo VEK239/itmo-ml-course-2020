@@ -25,45 +25,40 @@ class SVMClassifier:
         for _ in range(self.epochs_count):
             for i in range(len(y_train)):
                 E_i = get_prediction(i) - y_train[i]
-                if y_train[i] * E_i < -self.tolerance and lambdas[i] < self.C or y_train[i] * E_i > self.tolerance and \
-                        lambdas[i] > 0:
-                    j = random.choice([j for j in range(i)] + [j for j in range(i + 1, len(y_train))])
-                    E_j = get_prediction(j) - y_train[j]
+                j = random.choice([j for j in range(i)] + [j for j in range(i + 1, len(y_train))])
+                E_j = get_prediction(j) - y_train[j]
 
-                    old_lambda_i = lambdas[i]
-                    old_lambda_j = lambdas[j]
+                old_lambda_i = lambdas[i]
+                old_lambda_j = lambdas[j]
 
-                    if y_train[i] != y_train[j]:
-                        L = max(0.0, lambdas[j] - lambdas[i])
-                        H = min(self.C, self.C + lambdas[j] - lambdas[i])
-                    else:
-                        L = max(0.0, lambdas[i] + lambdas[j] - self.C)
-                        H = min(self.C, lambdas[i] + lambdas[j])
+                if y_train[i] != y_train[j]:
+                    L = max(0.0, lambdas[j] - lambdas[i])
+                    H = min(self.C, self.C + lambdas[j] - lambdas[i])
+                else:
+                    L = max(0.0, lambdas[i] + lambdas[j] - self.C)
+                    H = min(self.C, lambdas[i] + lambdas[j])
 
-                    if abs(L - H) < 1e-15:
-                        continue
+                eta = 2 * K[i][j] - K[i][i] - K[j][j]
+                if abs(L - H) < self.tolerance or abs(eta) < self.tolerance:
+                    continue
 
-                    eta = 2 * K[i][j] - K[i][i] - K[j][j]
-                    if eta >= 0:
-                        continue
+                new_lambda_j = old_lambda_j - y_train[j] * (E_i - E_j) / eta
+                new_lambda_j = min(max(new_lambda_j, L), H)
+                if abs(new_lambda_j - old_lambda_j) < self.tolerance:
+                    continue
+                lambdas[j] = new_lambda_j
+                lambdas[i] += y_train[i] * y_train[j] * (old_lambda_j - lambdas[j])
 
-                    lambdas[j] -= y_train[j] * (E_i - E_j) / eta
-                    lambdas[j] = min(max(lambdas[j], L), H)
-                    if abs(lambdas[j] - old_lambda_j) < self.tolerance:
-                        continue
-
-                    lambdas[i] += y_train[i] * y_train[j] * (old_lambda_j - lambdas[j])
-
-                    b1 = b - E_i - y_train[i] * (lambdas[i] - old_lambda_i) * K[i][i] - y_train[j] * (
-                            lambdas[j] - old_lambda_j) * K[i][j]
-                    b2 = b - E_j - y_train[i] * (lambdas[i] - old_lambda_i) * K[i][j] - y_train[j] * (
-                            lambdas[j] - old_lambda_j) * K[j][j]
-                    if 0 < lambdas[i] < self.C:
-                        b = b1
-                    elif 0 < lambdas[j] < self.C:
-                        b = b2
-                    else:
-                        b = (b1 + b2) / 2
+                b1 = b - E_i - y_train[i] * (lambdas[i] - old_lambda_i) * K[i][i] - y_train[j] * (
+                        lambdas[j] - old_lambda_j) * K[i][j]
+                b2 = b - E_j - y_train[i] * (lambdas[i] - old_lambda_i) * K[i][j] - y_train[j] * (
+                        lambdas[j] - old_lambda_j) * K[j][j]
+                if 0 < lambdas[i] < self.C:
+                    b = b1
+                elif 0 < lambdas[j] < self.C:
+                    b = b2
+                else:
+                    b = (b1 + b2) / 2
         self.lambdas = lambdas
         self.b = b
 
