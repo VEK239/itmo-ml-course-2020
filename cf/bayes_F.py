@@ -1,7 +1,5 @@
 import math
-import operator
 from collections import defaultdict
-import numpy as np
 
 
 class BayesClassifier:
@@ -40,34 +38,38 @@ class BayesClassifier:
         self.create_n_grams(y, X)
         self.create_conditional_probs()
 
-    def predict(self, X, return_all=False):
+    def predict(self, X):
         resulting_probs = {}
         grams = [' '.join(X[i: i + self.gram_len]) for i in range(len(X) - self.gram_len + 1)]
         for label in self.classes.keys():
-            resulting_probs[label] = math.log(self.classes[label] * self.lambdas[label - 1]) + \
-                                     self.get_back_conditional_probs(label, grams)
-
-        if return_all:
-            for label, prob in resulting_probs.items():
-                resulting_probs[label] = pow(math.e, prob)
-            sum_prob = sum(resulting_probs.values())
-            for label, prob in resulting_probs.items():
-                resulting_probs[label] = prob / sum_prob
-            return resulting_probs
-        else:
-            lp1 = resulting_probs[1]
-            lp2 = resulting_probs[2]
-            p2 = 1 / (1 + np.exp(lp1 - lp2))
-            p1 = 1 - p2
-            return [max(resulting_probs.items(), key=operator.itemgetter(1))[0], p1, p2]
+            if self.classes[label] != 0:
+                resulting_probs[label] = math.log(self.classes[label] / sum(self.classes.values()) * self.lambdas[
+                    label - 1]) + self.get_back_conditional_probs(label, grams)
+            else:
+                resulting_probs[label] = 0
+        max_prob = max(i for i in resulting_probs.values() if i < 0)
+        for label, prob in resulting_probs.items():
+            resulting_probs[label] = math.exp(prob - max_prob)
+        sum_prob = sum(resulting_probs.values())
+        for label, prob in resulting_probs.items():
+            resulting_probs[label] = prob / sum_prob
+        return resulting_probs
 
     def get_back_conditional_probs(self, label, grams):
         prob = 0
         for w in self.grams:
             if w in grams:
-                prob += self.log_probs[w, label]
+                if self.probabilities[w, label] != 0:
+                    prob += self.log_probs[w, label]
+                else:
+                    prob = 0
+                    break
             else:
-                prob += self.back_log_probs[w, label]
+                if self.probabilities[w, label] != 1:
+                    prob += self.back_log_probs[w, label]
+                else:
+                    prob = 0
+                    break
         return prob
 
 
@@ -80,10 +82,9 @@ if __name__ == "__main__":
     for i in range(train_count):
         line = input().split()
         X.append(line[2:])
-        print(X)
         y.append(int(line[0]))
     classifier = BayesClassifier(alpha, 1, lambdas)
     classifier.fit(X, y)
     test_count = int(input())
     for i in range(test_count):
-        print(' '.join(map(str, classifier.predict(input().split()[1:], return_all=True).values())))
+        print(' '.join(map(str, classifier.predict(input().split()[1:]).values())))

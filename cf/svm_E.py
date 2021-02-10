@@ -1,5 +1,6 @@
 import math
 import random
+import time
 
 
 class SVMClassifier:
@@ -12,17 +13,19 @@ class SVMClassifier:
     def __init__(self, C, kernel, kernel_param=None):
         self.kernel = self.kernels[kernel]
         self.kernel_param = kernel_param
-        self.tolerance = 1e-3
+        self.epochs_count = 1000
+        self.tolerance = 1e-9
         self.C = C
 
     def count_lambdas(self, K, y_train):
         lambdas = [0 for _ in range(len(y_train))]
         b = 0
+        start_time = time.time()
 
         def get_prediction(i):
             return sum(yi * lambdas_i * k_i_j for yi, lambdas_i, k_i_j in zip(y_train, lambdas, K[i])) + b
 
-        for _ in range(self.epochs_count):
+        while time.time() - start_time < 1.5:
             for i in range(len(y_train)):
                 E_i = get_prediction(i) - y_train[i]
                 j = random.choice([j for j in range(i)] + [j for j in range(i + 1, len(y_train))])
@@ -49,10 +52,10 @@ class SVMClassifier:
                 lambdas[j] = new_lambda_j
                 lambdas[i] += y_train[i] * y_train[j] * (old_lambda_j - lambdas[j])
 
-                b1 = b - E_i - y_train[i] * (lambdas[i] - old_lambda_i) * K[i][i] - y_train[j] * (
-                        lambdas[j] - old_lambda_j) * K[i][j]
-                b2 = b - E_j - y_train[i] * (lambdas[i] - old_lambda_i) * K[i][j] - y_train[j] * (
-                        lambdas[j] - old_lambda_j) * K[j][j]
+                b1 = b - E_i - K[i][i] * y_train[i] * (lambdas[i] - old_lambda_i) - K[i][j] * y_train[j] * (
+                        lambdas[j] - old_lambda_j)
+                b2 = b - E_j - K[i][j] * y_train[i] * (lambdas[i] - old_lambda_i) - K[j][j] * y_train[j] * (
+                        lambdas[j] - old_lambda_j)
                 if 0 < lambdas[i] < self.C:
                     b = b1
                 elif 0 < lambdas[j] < self.C:
@@ -78,6 +81,17 @@ class SVMClassifier:
 
 
 if __name__ == "__main__":
-    C = 1
     kernel = 'linear'
     n = int(input())
+    K = []
+    y = []
+    for i in range(n):
+        line = list(map(int, input().split()))
+        K.append(line[:-1])
+        y.append(line[-1])
+    C = int(input())
+    classifier = SVMClassifier(C, kernel)
+    classifier.count_lambdas(K, y)
+    for l in classifier.lambdas:
+        print(l)
+    print(classifier.b)
